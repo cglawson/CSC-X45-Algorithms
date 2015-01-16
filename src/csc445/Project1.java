@@ -16,47 +16,43 @@ import java.util.ArrayList;
 public class Project1 extends JFrame {
 
     ArrayList<Point> pointList = new ArrayList<Point>();
+    ArrayList<ArrayList> distList = new ArrayList<ArrayList>();
 
     public Project1() {
-        this.setSize(660, 510);
+        this.setSize(666, 524);
         this.setTitle("CSC 445 - Project1");
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.add(new Surface(), BorderLayout.CENTER);
         this.setVisible(true);
     }
 
-    private void initList() {
+    private void initPointList() {
         try {
-            Scanner input = new Scanner(new File("rtest1.dat"));
+            Scanner input = new Scanner(new File("rtest3.dat"));
             int numRows = input.nextInt();
 
-            int maxX = Integer.MIN_VALUE;
-            int maxY = Integer.MIN_VALUE;
-
             for (int i = 0; i < numRows; i++) {
-                int x = input.nextInt();
-                int y = input.nextInt();
-
-                pointList.add(new Point(x, y));
-
-                if (x > maxX) {
-                    maxX = x;
-                }
-                if (x > maxY) {
-                    maxY = y;
-                }
-
+                pointList.add(new Point(input.nextInt(), input.nextInt()));
             }
-
-            System.out.print("Max X: " + maxX);
-            System.out.print("Max Y: " + maxY);
-
-            
         } catch (FileNotFoundException e) {
             System.out.println("File not Found.");
             System.out.print(System.getProperty("user.dir"));
         }
 
+    }
+
+    private double distance(double x1, double x2, double y1, double y2) {
+        return Math.sqrt((Math.pow(x2 - x1, 2)) + Math.pow(y2 - y1, 2));
+    }
+
+    private void popDistTable() {
+        for (Point p : pointList) {
+            ArrayList<Double> row = new ArrayList<Double>();
+            for (Point q : pointList) {
+                row.add(distance(p.getX(), q.getX(), p.getY(), q.getY()));
+            }
+            distList.add(row);
+        }
     }
 
     private class Surface extends JComponent {
@@ -66,13 +62,15 @@ public class Project1 extends JFrame {
 
             graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            initList();
+            initPointList();
 
             Shape s;
             for (Point p : pointList) {
-                s = new Ellipse2D.Double(p.getX(), p.getY(), 3, 3);
+                s = new Ellipse2D.Double(p.getX() + 10, p.getY() + 10, 3, 3);
                 graphics.fill(s);
             }
+
+            popDistTable();
         }
     }
 }
