@@ -1,21 +1,17 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ *   Caleb Lawson
+ *   CSC 445
+ *   Completed 1/17/2015
+ *
+ *   This class makes it easy for me to launch project classes in my IDE and keep
+ *   them all in the same GitHub repository.
  */
 package csc445;
 
-/**
- *
- * @author cglawson
- */
 public class CSC445 {
 
-    /**
-     * @param args the command line arguments
-     */
     public static void main(String[] args) {
         Project1 project1 = new Project1();
     }
-    
+
 }
