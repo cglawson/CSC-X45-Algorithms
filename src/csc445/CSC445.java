@@ -12,6 +12,7 @@ public class CSC445 {
 
     public static void main(String[] args) {
         Project1 project1 = new Project1();
+        //NewClass nc = new NewClass();
     }
 
 }
