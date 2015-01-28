@@ -1,7 +1,7 @@
 /*
  *   Caleb Lawson
  *   CSC 445
- *   Completed 1/17/2015
+ *   Completed 1/27/2015
  *
  *   Project1 reads in and displays a file containing point coordinates, then draws
  *   a path based on point proximity.
@@ -14,6 +14,8 @@ import javax.swing.*;
 import java.util.Scanner;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 
@@ -22,15 +24,9 @@ public class Project1 extends JFrame {
     ArrayList<PointList> freeList = new ArrayList<>();
     ArrayList<PointList> usedList = new ArrayList<>();
 
-    // Time the path-finding algorithm.
-    long startTime;
-    long endTime;
-
-    int runCount;
-
     // Create the window and display the frame.
     public Project1() {
-        this.setSize(666, 524);
+        this.setSize(666, 572);
         this.setTitle("CSC 445 - Project1");
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.add(new Surface(), BorderLayout.CENTER);
@@ -40,7 +36,7 @@ public class Project1 extends JFrame {
     // Read in points from file to memory.
     private void initPointList() {
         try {
-            Scanner input = new Scanner(new File("rtest1.dat"));
+            Scanner input = new Scanner(new File("rtest3.dat"));
             int numRows = input.nextInt();
 
             for (int i = 0; i < numRows; i++) {
@@ -51,6 +47,32 @@ public class Project1 extends JFrame {
             System.out.print(System.getProperty("user.dir"));
         }
 
+    }
+
+    // Write results to file.
+    private void outputPointList() {
+        try {
+            PrintStream out = new PrintStream(new FileOutputStream("rtest3_lawson.dat"));
+            
+            out.println(usedList.size());
+            
+            for(PointList p : usedList){
+                out.println((int) p.getX()  + " " + (int) p.getY());
+            }
+            
+            out.close();
+        } catch (FileNotFoundException e) {
+            System.out.println("File not Found.");
+            System.out.print(System.getProperty("user.dir"));
+        }
+    }
+
+    private double pathLength(ArrayList<PointList> a) {
+        double sum = 0.0;
+        for (int x = 0; x < a.size() - 1; x++) {
+            sum += a.get(x).findDistanceTo(a.get(x + 1).getPoint());
+        }
+        return sum;
     }
 
     // Find the distance between two Point objects.
@@ -71,8 +93,6 @@ public class Project1 extends JFrame {
 
     // Greedy, approach to forging a path with the nearest neighbor to a given point.
     private void nearestNeighbor() {
-        startTime = System.currentTimeMillis();
-
         PointList current = freeList.get(0);
         PointList temp;
 
@@ -100,55 +120,45 @@ public class Project1 extends JFrame {
         // Move the last point to the usedList.
         usedList.add(current);
         freeList.remove(current);
-
-        endTime = System.currentTimeMillis();
     }
 
     // Java implementation of Dr. Pilgrim's switch_back procedure from his CSC 445 Lecture 02 slides.
-    private void switchBack() {
+    private boolean switchBack() {
+        boolean changed = false;
 
-        boolean changed;
-
-        do {
-            changed = false;
-            for (int x = 0; x < usedList.size() - 3; x++) {
-                if (usedList.get(x).findDistanceTo(usedList.get(x + 1).getPoint()) + usedList.get(x + 2).findDistanceTo(usedList.get(x + 3).getPoint())
-                        > usedList.get(x).findDistanceTo(usedList.get(x + 2).getPoint()) + usedList.get(x + 1).findDistanceTo(usedList.get(x + 3).getPoint())) {
-                    Collections.swap(usedList, x + 1, x + 2);
-                    changed = true;
-                }
+        for (int x = 0; x < usedList.size() - 3; x++) {
+            if (usedList.get(x).findDistanceTo(usedList.get(x + 1).getPoint()) + usedList.get(x + 2).findDistanceTo(usedList.get(x + 3).getPoint())
+                    > usedList.get(x).findDistanceTo(usedList.get(x + 2).getPoint()) + usedList.get(x + 1).findDistanceTo(usedList.get(x + 3).getPoint())) { // If shorter config found, swap.
+                Collections.swap(usedList, x + 1, x + 2);
+                changed = true;
             }
-            runCount++;
-        } while (changed);
+        }
+
+        return changed;
     }
 
     // Java implementation of Bob Pilgrim's cross procedure from his CSC 445 Lecture 02 slides.
-    private void decross() {
+    private boolean decross() {
+        boolean changed = false;
 
-        boolean changed;
-        int times = 0;
+        for (int x = 0; x < usedList.size() - 3; x++) {
+            for (int y = x + 2; y < usedList.size() - 1; y++) {
+                if (usedList.get(x).findDistanceTo(usedList.get(x + 1).getPoint()) + usedList.get(y).findDistanceTo(usedList.get(y + 1).getPoint())
+                        > usedList.get(x).findDistanceTo(usedList.get(y).getPoint()) + usedList.get(x + 1).findDistanceTo(usedList.get(y + 1).getPoint())) {
 
-        do {
-            times++;
-            changed = false;
-            for (int x = 0; x < usedList.size() - 3; x++) {
-                for (int y = x + 2; y < usedList.size() - 1; y++) {
-                    if (usedList.get(x).findDistanceTo(usedList.get(x + 1).getPoint()) + usedList.get(y).findDistanceTo(usedList.get(y + 1).getPoint())
-                            > usedList.get(x).findDistanceTo(usedList.get(y).getPoint()) + usedList.get(x + 1).findDistanceTo(usedList.get(y + 1).getPoint())) {
+                    java.util.List<PointList> temp = usedList.subList(x + 1, y + 1); // Copy the sublist to be reversed.
+                    Collections.reverse(temp);
 
-                        java.util.List<PointList> temp = usedList.subList(x + 1, y + 1);
-                        Collections.reverse(temp);
-                        
-                        for(int i = 0; i < temp.size(); i++){
-                            usedList.set(i + x + 1, temp.get(i));
-                        }
-
-                        changed = true;
+                    for (int i = 0; i < temp.size(); i++) {  // Insert the reversed values into the array.
+                        usedList.set(i + x + 1, temp.get(i));
                     }
+
+                    changed = true;
                 }
             }
-            System.out.print(times);
-        } while (changed);
+        }
+
+        return changed;
     }
 
     // This class holds a point and its distance in relation to another point.
@@ -216,7 +226,12 @@ public class Project1 extends JFrame {
 
         @Override
         public void paint(Graphics g) {
-            double pointShift = 10.0;
+            double pointShiftX = 10.0;
+            double pointShiftY = 48.0;
+
+            // Time the path-finding algorithm.
+            long startTime;
+            long endTime;
 
             Graphics2D graphics = (Graphics2D) g;
             graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -227,59 +242,48 @@ public class Project1 extends JFrame {
             graphics.setPaint(Color.RED);
             Shape s;
             for (PointList p : freeList) {
-                s = new Ellipse2D.Double(p.getX() + pointShift, p.getY() + pointShift, 3, 3);
+                s = new Ellipse2D.Double(p.getX() + pointShiftX - 2, p.getY() + pointShiftY - 2, 4, 4);
                 graphics.fill(s);
             }
 
             popDistList();
+
+            startTime = System.currentTimeMillis();
+
             nearestNeighbor();
-            //usedList=freeList;
+            double distGreedyPath = pathLength(usedList);
 
-            // Draw Lines.
-//            graphics.setPaint(Color.BLACK);
-//            for (int x = 0; x < usedList.size() - 1; x++) {
-//                s = new Line2D.Double(usedList.get(x).getX() + pointShift, usedList.get(x).getY() + pointShift, usedList.get(x + 1).getX() + pointShift, usedList.get(x + 1).getY() + pointShift);
-//                graphics.draw(s);
-//            }
-            
-            double sum = 0.0;
-            for(int x = 0; x < usedList.size() - 1; x++){
-                sum += usedList.get(x).findDistanceTo(usedList.get(x+1).getPoint());
-            }
+            boolean sbChanged;
+            boolean dcChanged;
+            int timesOptimization = 0;
+            do { // While a change is detected by either optimization algorithm, continue running.
+                sbChanged = false;
+                dcChanged = false;
+                timesOptimization++;
 
-            switchBack();
+                sbChanged = switchBack();
+                dcChanged = decross();
+            } while (sbChanged || dcChanged);
+            double distPostOptimization = pathLength(usedList);
 
-//            graphics.setPaint(Color.GREEN);
-//            for (int x = 0; x < usedList.size() - 1; x++) {
-//                s = new Line2D.Double(usedList.get(x).getX() + pointShift, usedList.get(x).getY() + pointShift, usedList.get(x + 1).getX() + pointShift, usedList.get(x + 1).getY() + pointShift);
-//                graphics.draw(s);
-//            }
-            
-            double sum2 = 0.0;
-            for(int x = 0; x < usedList.size() - 1; x++){
-                sum2 += usedList.get(x).findDistanceTo(usedList.get(x+1).getPoint());
-            }
+            endTime = System.currentTimeMillis();
 
-            decross();
-
-            graphics.setPaint(Color.ORANGE);
+            //Draw Lines
+            graphics.setPaint(Color.BLACK);
             for (int x = 0; x < usedList.size() - 1; x++) {
-                s = new Line2D.Double(usedList.get(x).getX() + pointShift, usedList.get(x).getY() + pointShift, usedList.get(x + 1).getX() + pointShift, usedList.get(x + 1).getY() + pointShift);
+                s = new Line2D.Double(usedList.get(x).getX() + pointShiftX, usedList.get(x).getY() + pointShiftY, usedList.get(x + 1).getX() + pointShiftX, usedList.get(x + 1).getY() + pointShiftY);
                 graphics.draw(s);
-            }
-            
-            double sum3 = 0.0;
-            for(int x = 0; x < usedList.size() - 1; x++){
-                sum3 += usedList.get(x).findDistanceTo(usedList.get(x+1).getPoint());
             }
 
             // Display run time of algorithm.
             graphics.setPaint(Color.BLACK);
             graphics.setFont(new Font("Monospace", Font.PLAIN, 12));
-            graphics.drawString("NN Run Time: " + (endTime - startTime) + " ms", 0, 12);
-            graphics.drawString("Distance 1 =>" + sum, 0, 24);
-            graphics.drawString("Distance 2 =>" + sum2, 0, 36);
-            graphics.drawString("Distance 3 =>" + sum3, 0, 48);
+            graphics.drawString("Run Time: " + (endTime - startTime) + " ms", 0, 12);
+            graphics.drawString("Nearest neighbor dist =>" + distGreedyPath, 0, 24);
+            graphics.drawString("Dist after optimization =>" + distPostOptimization, 0, 36);
+            graphics.drawString("Optimization loop iterations =>" + timesOptimization, 0, 48);
+            
+            outputPointList();
         }
     }
 }
