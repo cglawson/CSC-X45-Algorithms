@@ -1,10 +1,9 @@
 /*
  *   Caleb Lawson
  *   CSC 445
- *   Completed 1/27/2015
+ *   Completed 2/3/2015
  *
- *   Project1 reads in and displays a file containing point coordinates, then draws
- *   a path based on point proximity.
+ *   Project2 computes the hull of a set of points with the QuickHull algorithm and displays the result.
  */
 package csc445;
 
@@ -19,15 +18,15 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 
-public class Project1 extends JFrame {
+public class Project2 extends JFrame {
 
     ArrayList<PointList> freeList = new ArrayList<>();
     ArrayList<PointList> usedList = new ArrayList<>();
 
     // Create the window and display the frame.
-    public Project1() {
+    public Project2() {
         this.setSize(666, 572);
-        this.setTitle("CSC 445 - Project1");
+        this.setTitle("CSC 445 - Project2");
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.add(new Surface(), BorderLayout.CENTER);
         this.setVisible(true);
@@ -36,7 +35,7 @@ public class Project1 extends JFrame {
     // Read in points from file to memory.
     private void initPointList() {
         try {
-            Scanner input = new Scanner(new File("output.dat"));
+            Scanner input = new Scanner(new File("rtest1.dat"));
             int numRows = input.nextInt();
 
             for (int i = 0; i < numRows; i++) {
@@ -53,13 +52,13 @@ public class Project1 extends JFrame {
     private void outputPointList() {
         try {
             PrintStream out = new PrintStream(new FileOutputStream("output.dat"));
-            
+
             out.println(usedList.size());
-            
-            for(PointList p : usedList){
-                out.println((int) p.getX()  + " " + (int) p.getY());
+
+            for (PointList p : usedList) {
+                out.println((int) p.getX() + " " + (int) p.getY());
             }
-            
+
             out.close();
         } catch (FileNotFoundException e) {
             System.out.println("File not Found.");
@@ -91,77 +90,126 @@ public class Project1 extends JFrame {
         }
     }
 
-    // Greedy approach to forging a path with the nearest neighbor to a given point.
-    private void nearestNeighbor() {
-        PointList current = freeList.get(0);
-        PointList temp;
-
-        while (freeList.size() > 1) {
-            int index = 0;
-            int minIndex = Integer.MAX_VALUE;
-            double minDistance = Double.MAX_VALUE;
-
-            for (PointList p : freeList) {
-                double dist = p.findDistanceTo(current.getPoint());
-
-                if (dist != 0.0 && dist < minDistance) { // Can't choose self as closest.
-                    minDistance = dist;
-                    minIndex = index;
-                }
-
-                index++;
-            }
-
-            usedList.add(current); // Copy current to the usedList.
-            temp = current; // Be sure that the index is not messed up for next assignment.
-            current = freeList.get(minIndex); // New current is the closest point to the previous current.
-            freeList.remove(temp); // Remove previous current from the freeList.
-        }
-        // Move the last point to the usedList.
-        usedList.add(current);
-        freeList.remove(current);
+    // Determine what side a given point is along a line segment.
+    // False = left, True = right.
+    private boolean pointSide(PointList a, PointList b, PointList p) {
+        return (((b.getX() - a.getX()) * (p.getY() - a.getY()) - (b.getY() - a.getY()) * (p.getX() - a.getX())) > 0);
     }
 
-    // Java implementation of Dr. Pilgrim's switch_back procedure from his CSC 445 Lecture 02 slides.
-    private boolean switchBack() {
-        boolean changed = false;
+    // Determine how far away a point p is from line segment ab.
+    private double lineDistance(PointList a, PointList b, PointList p) {
+       double abx = b.getX() - a.getX();
+       double aby = b.getY() - a.getY();
+       
+       double result = ((abx*(a.getY()-p.getY())) - (aby*(a.getX() - p.getX())));
+       if (result < 0) {
+           result -= result;
+       }
+       return result;
+    }
 
-        for (int x = 0; x < usedList.size() - 3; x++) {
-            if (usedList.get(x).findDistanceTo(usedList.get(x + 1).getPoint()) + usedList.get(x + 2).findDistanceTo(usedList.get(x + 3).getPoint())
-                    > usedList.get(x).findDistanceTo(usedList.get(x + 2).getPoint()) + usedList.get(x + 1).findDistanceTo(usedList.get(x + 3).getPoint())) { // If shorter config found, swap.
-                Collections.swap(usedList, x + 1, x + 2);
-                changed = true;
+    // Find the hull of freeList;
+    public void quickHull() {
+        double minX = Double.MAX_VALUE;
+        int minXIndex = -1;
+        double maxX = Double.MIN_VALUE;
+        int maxXIndex = -1;
+
+        for (PointList p : freeList) {
+            // Find point with smallest X.
+            if (p.getX() < minX) {
+                minX = p.getX();
+                minXIndex = freeList.indexOf(p);
+            }
+            //Find point with largest X.
+            if (p.getX() > maxX) {
+                maxX = p.getX();
+                maxXIndex = freeList.indexOf(p);
             }
         }
 
-        return changed;
-    }
+        PointList a = freeList.get(minXIndex);
+        PointList b = freeList.get(maxXIndex);
 
-    // Java implementation of Bob Pilgrim's cross procedure from his CSC 445 Lecture 02 slides.
-    private boolean decross() {
-        boolean changed = false;
+        usedList.add(a);
+        usedList.add(b);
+        freeList.remove(a);
+        freeList.remove(b);
+        
+        ArrayList<PointList> left = new ArrayList<>();
+        ArrayList<PointList> right = new ArrayList<>();
 
-        for (int x = 0; x < usedList.size() - 3; x++) {
-            for (int y = x + 2; y < usedList.size() - 1; y++) {
-                if (usedList.get(x).findDistanceTo(usedList.get(x + 1).getPoint()) + usedList.get(y).findDistanceTo(usedList.get(y + 1).getPoint())
-                        > usedList.get(x).findDistanceTo(usedList.get(y).getPoint()) + usedList.get(x + 1).findDistanceTo(usedList.get(y + 1).getPoint())) {
-
-                    java.util.List<PointList> temp = usedList.subList(x + 1, y + 1); // Copy the sublist to be reversed.
-                    Collections.reverse(temp);
-
-                    for (int i = 0; i < temp.size(); i++) {  // Insert the reversed values into the array.
-                        usedList.set(i + x + 1, temp.get(i));
-                    }
-
-                    changed = true;
-                }
+        // Fill sets with points either left or right of line segment ab.
+        for (PointList p : freeList) {
+            if (pointSide(a, b, p)) {
+                right.add(p);
+            } else {
+                left.add(p);
             }
         }
 
-        return changed;
+        // Recurse over the left and right sets.
+        findHull(b, a, right);
+        findHull(a, b, left);
     }
 
-    // This class holds a point and its distance in relation to another point.
+    // Find points on the convex hull on a  set of points.
+    private void findHull(PointList a, PointList b, ArrayList<PointList> set) {
+        int insertIndex = usedList.indexOf(b);
+
+        if (set.isEmpty()) { // Termination case.
+            usedList.add(usedList.get(0)); // This is to connect the last point to the first point on the hull.
+            return;
+        }
+        if (set.size() == 1) { // If there's only one point left in the set, insert it where it belongs and return.
+            PointList p = set.get(0);
+            set.remove(p);
+            usedList.add(insertIndex, p);
+            return;
+        }
+
+        // Find the farthest point from the line segment ab.
+        
+        double greatestDist = Double.MIN_VALUE;
+        int greatestDistIndex = -1;
+
+        for (PointList p : set) {
+            double dist = lineDistance(a, b, p);
+            if (dist > greatestDist) {
+                greatestDist = dist;
+                greatestDistIndex = set.indexOf(p);
+            }
+        }
+
+        // Add the farthest point from line segment ab to create triangle abc.
+        PointList c = set.get(greatestDistIndex);
+        set.remove(greatestDistIndex);
+        usedList.add(insertIndex, c);
+
+        // Who is left of line segment ac?
+        ArrayList<PointList> leftAC = new ArrayList<>();
+        for (PointList p : set) {
+            if (!pointSide(a, c, p)) {
+                leftAC.add(p);
+            }
+        }
+
+        // Who is left of line segment cb?
+        ArrayList<PointList> leftCB = new ArrayList<>();
+        for (PointList p : set) {
+            if (!pointSide(c, b, p)) {
+                leftCB.add(p);
+            }
+        }
+
+        // Points not left of line segments ac or cb can be ignored.
+        
+        // Recurse over the points left of line segments ac or cb.
+        findHull(a, c, leftAC);
+        findHull(c, b, leftCB);
+    }
+
+// This class holds a point and its distance in relation to another point.
     private class PointDistance {
 
         Point point;
@@ -181,7 +229,7 @@ public class Project1 extends JFrame {
         }
     }
 
-    // This class holds a point and a list of distances to all other points.
+// This class holds a point and a list of distances to all other points.
     private class PointList {
 
         Point point;
@@ -212,6 +260,7 @@ public class Project1 extends JFrame {
             row = a;
         }
 
+        // Linear search, HUGE performance hog.
         public double findDistanceTo(Point p) {
             for (PointDistance pd : row) {
                 if (p == pd.getPoint()) {
@@ -249,23 +298,7 @@ public class Project1 extends JFrame {
             popDistList();
 
             startTime = System.currentTimeMillis();
-
-            nearestNeighbor();
-            double distGreedyPath = pathLength(usedList);
-
-            boolean sbChanged;
-            boolean dcChanged;
-            int timesOptimization = 0;
-            do { // While a change is detected by either optimization algorithm, continue running.
-                sbChanged = false;
-                dcChanged = false;
-                timesOptimization++;
-
-                sbChanged = switchBack();
-                dcChanged = decross();
-            } while (sbChanged || dcChanged);
-            double distPostOptimization = pathLength(usedList);
-
+            quickHull();
             endTime = System.currentTimeMillis();
 
             //Draw Lines
@@ -274,14 +307,13 @@ public class Project1 extends JFrame {
                 s = new Line2D.Double(usedList.get(x).getX() + pointShiftX, usedList.get(x).getY() + pointShiftY, usedList.get(x + 1).getX() + pointShiftX, usedList.get(x + 1).getY() + pointShiftY);
                 graphics.draw(s);
             }
-
+            
             // Display run time of algorithm.
             graphics.setPaint(Color.BLACK);
             graphics.setFont(new Font("Monospace", Font.PLAIN, 12));
             graphics.drawString("Run Time: " + (endTime - startTime) + " ms", 0, 12);
-            graphics.drawString("Nearest neighbor dist =>" + distGreedyPath, 0, 24);
-            graphics.drawString("Dist after optimization =>" + distPostOptimization, 0, 36);
-            graphics.drawString("Optimization loop iterations =>" + timesOptimization, 0, 48);
+            graphics.drawString("Points in Hull: " + (usedList.size() - 1.0), 0, 24);
+            graphics.drawString("Hull length: " + pathLength(usedList), 0, 36);
             
             outputPointList();
         }

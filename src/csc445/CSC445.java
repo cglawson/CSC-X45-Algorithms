@@ -11,8 +11,8 @@ package csc445;
 public class CSC445 {
 
     public static void main(String[] args) {
-        Project1 project1 = new Project1();
-        //NewClass nc = new NewClass();
+        //Project1 project1 = new Project1();
+        Project2 project2 = new Project2();
     }
 
 }
