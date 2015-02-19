@@ -36,7 +36,7 @@ public class Project1 extends JFrame {
     // Read in points from file to memory.
     private void initPointList() {
         try {
-            Scanner input = new Scanner(new File("output.dat"));
+            Scanner input = new Scanner(new File("rtest1.dat"));
             int numRows = input.nextInt();
 
             for (int i = 0; i < numRows; i++) {
