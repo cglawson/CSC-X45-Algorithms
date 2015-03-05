@@ -90,7 +90,7 @@ public class Test1Problem2 extends JFrame {
         return result;
     }
 
-    // Find the hull of freeList;
+    // Find the hull of freeList
     public void quickHull() {
         usedList.clear();
 
@@ -144,8 +144,6 @@ public class Test1Problem2 extends JFrame {
         int insertIndex = usedList.indexOf(b);
 
         if (set.isEmpty()) { // Termination case.
-            //usedList.add(usedList.get(0)); // This is to connect the last point to the first point on the hull.
-            //System.out.print("touch");
             return;
         }
         if (set.size() == 1) { // If there's only one point left in the set, insert it where it belongs and return.
