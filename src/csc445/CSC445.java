@@ -9,15 +9,15 @@
 package csc445;
 
 public class CSC445 {
-    
+
     // Project4 Graph here.
-    
     public static void main(String[] args) {
         //Project1 project1 = new Project1();
         //Project2 project2 = new Project2();
         //Project3 was a homework sheet.
         //Project4 project4 = new Project4();
-        Test1Problem2 test1problem2 = new Test1Problem2();
+        //Test1Problem2 test1problem2 = new Test1Problem2();
+        Test1Problem1 test1problem1 = new Test1Problem1();
     }
 
 }
