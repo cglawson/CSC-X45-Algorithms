@@ -1,9 +1,9 @@
 /*
  *   Caleb Lawson
  *   CSC 445
- *   Completed 2/3/2015
+ *   Completed 3/4/2015
  *
- *   Project2 computes the hull of a set of points with the QuickHull algorithm and displays the result.
+ *   Test1Problem2 computes the convex of a set of points with the QuickHull algorithm repeatedly and displays the result.
  */
 package csc445;
 
@@ -26,7 +26,7 @@ public class Test1Problem2 extends JFrame {
     // Create the window and display the frame.
     public Test1Problem2() {
         this.setSize(666, 572);
-        this.setTitle("CSC 445 - Project2");
+        this.setTitle("CSC 445 - Test1Problem2");
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.add(new Surface(), BorderLayout.CENTER);
         this.setVisible(true);
@@ -46,24 +46,6 @@ public class Test1Problem2 extends JFrame {
             System.out.print(System.getProperty("user.dir"));
         }
 
-    }
-
-    // Write results to file.
-    private void outputPointList() {
-        try {
-            PrintStream out = new PrintStream(new FileOutputStream("output.dat"));
-
-            out.println(usedList.size());
-
-            for (PointList p : usedList) {
-                out.println((int) p.getX() + " " + (int) p.getY());
-            }
-
-            out.close();
-        } catch (FileNotFoundException e) {
-            System.out.println("File not Found.");
-            System.out.print(System.getProperty("user.dir"));
-        }
     }
 
     private double pathLength(ArrayList<PointList> a) {
@@ -98,18 +80,20 @@ public class Test1Problem2 extends JFrame {
 
     // Determine how far away a point p is from line segment ab.
     private double lineDistance(PointList a, PointList b, PointList p) {
-       double abx = b.getX() - a.getX();
-       double aby = b.getY() - a.getY();
-       
-       double result = ((abx*(a.getY()-p.getY())) - (aby*(a.getX() - p.getX())));
-       if (result < 0) {
-           result -= result;
-       }
-       return result;
+        double abx = b.getX() - a.getX();
+        double aby = b.getY() - a.getY();
+
+        double result = ((abx * (a.getY() - p.getY())) - (aby * (a.getX() - p.getX())));
+        if (result < 0) {
+            result -= result;
+        }
+        return result;
     }
 
     // Find the hull of freeList;
     public void quickHull() {
+        usedList.clear();
+
         double minX = Double.MAX_VALUE;
         int minXIndex = -1;
         double maxX = Double.MIN_VALUE;
@@ -135,7 +119,7 @@ public class Test1Problem2 extends JFrame {
         usedList.add(b);
         freeList.remove(a);
         freeList.remove(b);
-        
+
         ArrayList<PointList> left = new ArrayList<>();
         ArrayList<PointList> right = new ArrayList<>();
 
@@ -151,6 +135,8 @@ public class Test1Problem2 extends JFrame {
         // Recurse over the left and right sets.
         findHull(b, a, right);
         findHull(a, b, left);
+        usedList.add(usedList.get(0)); // This is to connect the last point to the first point on the hull.
+
     }
 
     // Find points on the convex hull on a  set of points.
@@ -158,18 +144,19 @@ public class Test1Problem2 extends JFrame {
         int insertIndex = usedList.indexOf(b);
 
         if (set.isEmpty()) { // Termination case.
-            usedList.add(usedList.get(0)); // This is to connect the last point to the first point on the hull.
+            //usedList.add(usedList.get(0)); // This is to connect the last point to the first point on the hull.
+            //System.out.print("touch");
             return;
         }
         if (set.size() == 1) { // If there's only one point left in the set, insert it where it belongs and return.
             PointList p = set.get(0);
             set.remove(p);
+            freeList.remove(p);
             usedList.add(insertIndex, p);
             return;
         }
 
         // Find the farthest point from the line segment ab.
-        
         double greatestDist = Double.MIN_VALUE;
         int greatestDistIndex = -1;
 
@@ -181,32 +168,35 @@ public class Test1Problem2 extends JFrame {
             }
         }
 
-        // Add the farthest point from line segment ab to create triangle abc.
-        PointList c = set.get(greatestDistIndex);
-        set.remove(greatestDistIndex);
-        usedList.add(insertIndex, c);
+        if (greatestDistIndex > -1) {
 
-        // Who is left of line segment ac?
-        ArrayList<PointList> leftAC = new ArrayList<>();
-        for (PointList p : set) {
-            if (!pointSide(a, c, p)) {
-                leftAC.add(p);
+            // Add the farthest point from line segment ab to create triangle abc.
+            PointList c = set.get(greatestDistIndex);
+            set.remove(greatestDistIndex);
+            freeList.remove(c);
+            usedList.add(insertIndex, c);
+
+            // Who is left of line segment ac?
+            ArrayList<PointList> leftAC = new ArrayList<>();
+            for (PointList p : set) {
+                if (!pointSide(a, c, p)) {
+                    leftAC.add(p);
+                }
             }
-        }
 
-        // Who is left of line segment cb?
-        ArrayList<PointList> leftCB = new ArrayList<>();
-        for (PointList p : set) {
-            if (!pointSide(c, b, p)) {
-                leftCB.add(p);
+            // Who is left of line segment cb?
+            ArrayList<PointList> leftCB = new ArrayList<>();
+            for (PointList p : set) {
+                if (!pointSide(c, b, p)) {
+                    leftCB.add(p);
+                }
             }
-        }
 
-        // Points not left of line segments ac or cb can be ignored.
-        
-        // Recurse over the points left of line segments ac or cb.
-        findHull(a, c, leftAC);
-        findHull(c, b, leftCB);
+            // Points not left of line segments ac or cb can be ignored.
+            // Recurse over the points left of line segments ac or cb.
+            findHull(a, c, leftAC);
+            findHull(c, b, leftCB);
+        }
     }
 
 // This class holds a point and its distance in relation to another point.
@@ -288,7 +278,7 @@ public class Test1Problem2 extends JFrame {
             initPointList();
 
             // Draw Points.
-            graphics.setPaint(Color.RED);
+            graphics.setPaint(Color.BLACK);
             Shape s;
             for (PointList p : freeList) {
                 s = new Ellipse2D.Double(p.getX() + pointShiftX - 2, p.getY() + pointShiftY - 2, 4, 4);
@@ -297,25 +287,58 @@ public class Test1Problem2 extends JFrame {
 
             popDistList();
 
-            startTime = System.currentTimeMillis();
-            quickHull();
-            endTime = System.currentTimeMillis();
+            try {
+                PrintStream out = new PrintStream(new FileOutputStream("output.dat"));
 
-            //Draw Lines
-            graphics.setPaint(Color.BLACK);
-            for (int x = 0; x < usedList.size() - 1; x++) {
-                s = new Line2D.Double(usedList.get(x).getX() + pointShiftX, usedList.get(x).getY() + pointShiftY, usedList.get(x + 1).getX() + pointShiftX, usedList.get(x + 1).getY() + pointShiftY);
-                graphics.draw(s);
+                startTime = System.currentTimeMillis();
+                int count = 0;
+                
+                out.println("Outermost hulls to innermost hulls, seperated by newlines.\n");
+                
+                while (freeList.size() > 2) {
+
+                    //Find the hull.
+                    quickHull();
+
+                    //Draw Lines.
+                    if (count % 2 == 0) {
+                        graphics.setPaint(Color.MAGENTA);
+                    } else {
+                        graphics.setPaint(Color.GREEN);
+
+                    }
+
+                    for (int x = 0; x < usedList.size() - 1; x++) {
+                        s = new Line2D.Double(usedList.get(x).getX() + pointShiftX, usedList.get(x).getY() + pointShiftY, usedList.get(x + 1).getX() + pointShiftX, usedList.get(x + 1).getY() + pointShiftY);
+                        out.print("(" + (int) usedList.get(x).getX() + ", " + (int) usedList.get(x).getY() + ") ");
+                        graphics.draw(s);
+                    }
+
+                    out.println("\n");
+                    s = new Line2D.Double(usedList.get(0).getX() + pointShiftX, usedList.get(0).getY() + pointShiftY, usedList.get(usedList.size() - 1).getX() + pointShiftX, usedList.get(usedList.size() - 1).getY() + pointShiftY);
+                    graphics.draw(s);
+
+                    count++;
+                }
+                endTime = System.currentTimeMillis();
+
+                if (!freeList.isEmpty()) {
+                    out.println("\nPoints not belonging to a hull: ");
+                    for (PointList p : freeList) {
+                        out.print("(" + (int) p.getX() + ", " + (int) p.getY() + ") ");
+                    }
+                }
+
+                // Display run time of algorithm.
+                graphics.setPaint(Color.BLACK);
+                graphics.setFont(new Font("Monospace", Font.PLAIN, 12));
+                graphics.drawString("Run Time: " + (endTime - startTime) + " ms", 0, 12);
+
+                out.close();
+            } catch (FileNotFoundException e) {
+                System.out.println("File not Found.");
+                System.out.print(System.getProperty("user.dir"));
             }
-            
-            // Display run time of algorithm.
-            graphics.setPaint(Color.BLACK);
-            graphics.setFont(new Font("Monospace", Font.PLAIN, 12));
-            graphics.drawString("Run Time: " + (endTime - startTime) + " ms", 0, 12);
-            graphics.drawString("Points in Hull: " + (usedList.size() - 1.0), 0, 24);
-            graphics.drawString("Hull length: " + pathLength(usedList), 0, 36);
-            
-            outputPointList();
         }
     }
 }
