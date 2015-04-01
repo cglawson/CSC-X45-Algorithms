@@ -16,10 +16,11 @@ public class CSC445 {
         //Project2 project2 = new Project2();
         //Project3 was a homework sheet.
         //Project4 project4 = new Project4();
+        Project5 project5 = new Project5();
         //Test1Problem1 test1problem1 = new Test1Problem1();
         //Test1Problem2 test1problem2 = new Test1Problem2();
         //Test1Problem3 was a homework sheet.
-        Test1Problem4 test1problem4 = new Test1Problem4();
+        //Test1Problem4 test1problem4 = new Test1Problem4();
     }
 
 }
