@@ -21,15 +21,15 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class Project5 extends JFrame {
+public class Project6 extends JFrame {
 
     ArrayList<Point> freeList = new ArrayList<>();
     ArrayList<Point> usedList = new ArrayList<>();
 
     // Create the window and display the frame.
-    public Project5() {
+    public Project6() {
         this.setSize(666, 666);
-        this.setTitle("CSC 445 - Project5");
+        this.setTitle("CSC 445 - Project6");
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.add(new Surface(), BorderLayout.CENTER);
         this.setVisible(true);
@@ -38,7 +38,7 @@ public class Project5 extends JFrame {
     // Read in points from file to memory.
     private void initPointList() {
         try {
-            Scanner input = new Scanner(new File("challenge4.dat"));
+            Scanner input = new Scanner(new File("challenge1.dat"));
             int numRows = input.nextInt();
 
             for (int i = 0; i < numRows; i++) {
@@ -55,7 +55,7 @@ public class Project5 extends JFrame {
     // Write results to file.
     private void outputPointList() {
         try {
-            PrintStream out = new PrintStream(new FileOutputStream("challenge4_project5.dat"));
+            PrintStream out = new PrintStream(new FileOutputStream("output.dat"));
 
             out.println(usedList.size());
 
@@ -103,83 +103,6 @@ public class Project5 extends JFrame {
             index++;
         }
         return minDistanceIndex;
-    }
-
-    // Find the point that is furthest from all other points.
-    private int intelligentStart2() {
-        double maxDistance = Double.MIN_VALUE;
-        int index = 0;
-        int maxDistanceIndex = 0;
-
-        for (Point p : freeList) {
-            double distSum = 0.0;
-
-            for (Point q : freeList) {
-                distSum += distance(p, q);
-            }
-
-            if (distSum > maxDistance) {
-                maxDistance = distSum;
-                maxDistanceIndex = index;
-            }
-            index++;
-        }
-        return maxDistanceIndex;
-    }
-
-    // Greedy approach to forging a path with the nearest neighbor to a given point.
-    private void nearestNeighbor() {
-        //PointList current = freeList.get(0); // Start with the first point.
-        Point current = freeList.get(intelligentStart()); // Start with the point that is closest to all other points.
-        Point temp;
-
-        while (freeList.size() > 1) {
-            int index = 0;
-            int minIndex = Integer.MAX_VALUE;
-            double minDistance = Double.MAX_VALUE;
-
-            for (Point p : freeList) {
-                double dist = distance(p, current);
-
-                if (dist != 0.0 && dist < minDistance) { // Can't choose self as closest.
-                    minDistance = dist;
-                    minIndex = index;
-                }
-
-                index++;
-            }
-
-            usedList.add(current); // Copy current to the usedList.
-            temp = current; // Be sure that the index is not messed up for next assignment.
-            current = freeList.get(minIndex); // New current is the closest point to the previous current.
-            freeList.remove(temp); // Remove previous current from the freeList.
-        }
-        // Move the last point to the usedList.
-
-        usedList.add(current);
-        freeList.remove(current);
-    }
-
-    //Just a shuffle.
-    private void randSelect() {
-        Point current = freeList.get(0); // Start with the first point.
-        int randomIndex;
-        Point temp;
-
-        while (freeList.size() > 1) {
-
-            randomIndex = ThreadLocalRandom.current().nextInt(freeList.size());
-
-            usedList.add(current); // Copy current to the usedList.
-            temp = current; // Be sure that the index is not messed up for next assignment.
-            current = freeList.get(randomIndex); // New current is the closest point to the previous current.
-            freeList.remove(temp); // Remove previous current from the freeList.
-        }
-        // Move the last point to the usedList.     
-        do {
-            usedList.add(current);
-            freeList.remove(current);
-        } while (freeList.contains(current));
     }
 
     //Fast, interesting, slightly worse results that NN.
@@ -269,48 +192,207 @@ public class Project5 extends JFrame {
 
     }
 
-    //Inefficient.
-    private void randomSmaller() {
-        Collections.sort(freeList, new Comparator<Point>() {
+    private ArrayList<ArrayList<Point>> grouperizer() {
+        ArrayList<ArrayList<Point>> groups = new ArrayList<>();
+        ArrayList<Double> distList = distanceList(usedList);
+        double mean = mean(distList);
+        double standardDeviation = standardDeviation(distList);
 
-            public int compare(Point o1, Point o2) {
-                return Double.compare(o1.getX(), o2.getX());
+        int lastIndex = 0;
+
+        for (int x = 0; x < usedList.size() - 1; x++) {
+            if (distList.get(x) > mean + standardDeviation) {
+                ArrayList<Point> group = new ArrayList<>();
+
+                while (lastIndex < x) {
+                    if (lastIndex < usedList.size()) {
+                        group.add(usedList.get(lastIndex));
+                    }
+                    lastIndex++;
+                }
+
+                if (!group.isEmpty()) {
+                    groups.add(group);
+                }
             }
-        });
-        usedList = freeList;
+        }
 
-        long count = 10000000;
+        ArrayList<Point> group = new ArrayList<>();
 
-        while (count >= -10000000) {
-            double dist = pathLength(usedList);
+        while (lastIndex < usedList.size()) {
+            group.add(usedList.get(lastIndex));
+            lastIndex++;
+        }
 
-            int x = ThreadLocalRandom.current().nextInt(freeList.size());
-            int y = ThreadLocalRandom.current().nextInt(freeList.size());
+        if (!group.isEmpty()) {
+            groups.add(group);
+        }
 
-            Collections.swap(freeList, x, y);
+        System.out.print("num of groups " + groups.size());
+        return groups;
+    }
 
-            if (pathLength(freeList) < dist) {
-                usedList = freeList;
-                dist = pathLength(usedList);
-                System.out.println(dist + " ");
-            } else {
-                Collections.swap(freeList, x, y);
+    private ArrayList<ArrayList<Point>> groupOptimizer(ArrayList<ArrayList<Point>> groups) {
+        for (ArrayList<Point> l : groups) {
+            boolean sbChanged;
+            boolean dcChanged;
+
+            do { // While a change is detected by either optimization algorithm, continue running.
+                sbChanged = false;
+                dcChanged = false;
+
+                sbChanged = switchBack(l);
+                dcChanged = decross(l);
+            } while (sbChanged || dcChanged);
+        }
+
+        return groups;
+    }
+
+    private void groupReduce(ArrayList<ArrayList<Point>> groups) {
+        usedList.clear();
+
+        usedList.addAll(groups.get(0));
+        groups.remove(0);
+
+        while (!groups.isEmpty()) {
+            double minDist = Double.MAX_VALUE;
+            int insertIndex = 0;
+            ArrayList<Point> group = groups.get(0);
+
+            for (int x = 0; x < usedList.size(); x++) {
+
+                if (x == 0) {
+                    double dist = distance(group.get(group.size() - 1), usedList.get(x));
+                    if (dist < minDist) {
+                        minDist = dist;
+                        insertIndex = x;
+
+                    }
+                }
+                if (x < usedList.size() - 1) {
+                    double dist = distance(group.get(0), usedList.get(x)) + distance(group.get(group.size() - 1), usedList.get(x + 1));
+
+                    if (dist < minDist) {
+                        minDist = dist;
+                        insertIndex = x + 1;
+
+                    }
+                } else {
+                    double dist = distance(group.get(0), usedList.get(x));
+                    if (dist < minDist) {
+                        minDist = dist;
+                        insertIndex = x + 1;
+
+                    }
+                }
             }
 
-            count--;
-            //System.out.println(count);
+            usedList.addAll(insertIndex, group);
+            groups.remove(0);
+            System.out.println();
         }
 
     }
 
+    private void groupReduce2(ArrayList<ArrayList<Point>> groups) {
+        usedList.clear();
+
+        while (!groups.isEmpty()) {
+            ArrayList<Point> group = groups.get(0);
+
+            System.out.print(group.size() + " ");
+
+            ArrayList<Point> groupPart1 = new ArrayList<>();
+            ArrayList<Point> groupPart2 = new ArrayList<>();
+
+            for (int x = 0; x < group.size(); x++) {
+                if (x < (group.size() - 1) / 2) {
+                    groupPart1.add(group.get(x));
+                } else {
+                    groupPart2.add(group.get(x));
+                }
+            }
+
+            System.out.print(" " + (groupPart1.size() + groupPart2.size()) + " ");
+
+            ArrayList<Point> merged = new ArrayList<>();
+
+            for (int x = 0; x <= group.size() + 1; x++) {
+                if (x == 0 || x % 2 == 0) {
+                    if (!groupPart1.isEmpty()) {
+                        merged.add(groupPart1.get(0));
+                        groupPart1.remove(0);
+                    }
+                } else {
+                    if (!groupPart2.isEmpty()) {
+                        merged.add(groupPart2.get(0));
+                        groupPart2.remove(0);
+                    }
+                }
+            }
+
+            System.out.println(merged.size());
+
+            usedList.addAll(merged);
+            groups.remove(0);
+        }
+
+    }
+
+    private ArrayList<Double> distanceList(ArrayList<Point> pointList) {
+        ArrayList<Double> distList = new ArrayList<>();
+
+        for (int x = 0; x < pointList.size() - 1; x++) {
+            distList.add(distance(pointList.get(x), pointList.get(x + 1)));
+        }
+
+        return distList;
+    }
+
+    private double mean(ArrayList<Double> distList) {
+        double mean = 0.0;
+        double sum = 0.0;
+
+        for (double d : distList) {
+            sum += d;
+        }
+
+        mean = sum / distList.size();
+
+        return mean;
+    }
+
+    private double variance(ArrayList<Double> distList) {
+        double variance = 0.0;
+        double mean = mean(distList);
+
+        for (double d : distList) {
+            variance += Math.pow(d - mean, 2);
+        }
+
+        variance /= (distList.size() - 1);
+
+        return variance;
+    }
+
+    private double standardDeviation(ArrayList<Double> distList) {
+        double standardDeviation = 0.0;
+        double variance = variance(distList);
+
+        standardDeviation = Math.sqrt(variance);
+
+        return standardDeviation;
+    }
+
     // Java implementation of Dr. Pilgrim's switch_back procedure from his CSC 445 Lecture 02 slides.
-    private boolean switchBack() {
+    private boolean switchBack(ArrayList<Point> list) {
         boolean changed = false;
 
-        for (int x = 0; x < usedList.size() - 3; x++) {
-            if (distance(usedList.get(x), usedList.get(x + 1)) + distance(usedList.get(x + 2), usedList.get(x + 3))
-                    > distance(usedList.get(x), usedList.get(x + 2)) + distance(usedList.get(x + 1), usedList.get(x + 3))) { // If shorter config found, swap.
-                Collections.swap(usedList, x + 1, x + 2);
+        for (int x = 0; x < list.size() - 3; x++) {
+            if (distance(list.get(x), list.get(x + 1)) + distance(list.get(x + 2), list.get(x + 3))
+                    > distance(list.get(x), list.get(x + 2)) + distance(list.get(x + 1), list.get(x + 3))) { // If shorter config found, swap.
+                Collections.swap(list, x + 1, x + 2);
                 changed = true;
             }
         }
@@ -319,19 +401,19 @@ public class Project5 extends JFrame {
     }
 
     // Java implementation of Bob Pilgrim's cross procedure from his CSC 445 Lecture 02 slides.
-    private boolean decross() {
+    private boolean decross(ArrayList<Point> list) {
         boolean changed = false;
 
-        for (int x = 0; x < usedList.size() - 3; x++) {
-            for (int y = x + 2; y < usedList.size() - 1; y++) {
-                if (distance(usedList.get(x), usedList.get(x + 1)) + distance(usedList.get(y), usedList.get(y + 1))
-                        > distance(usedList.get(x), usedList.get(y)) + distance(usedList.get(x + 1), usedList.get(y + 1))) {
+        for (int x = 0; x < list.size() - 3; x++) {
+            for (int y = x + 2; y < list.size() - 1; y++) {
+                if (distance(list.get(x), list.get(x + 1)) + distance(list.get(y), list.get(y + 1))
+                        > distance(list.get(x), list.get(y)) + distance(list.get(x + 1), list.get(y + 1))) {
 
-                    java.util.List<Point> temp = usedList.subList(x + 1, y + 1); // Copy the sublist to be reversed.
+                    java.util.List<Point> temp = list.subList(x + 1, y + 1); // Copy the sublist to be reversed.
                     Collections.reverse(temp);
 
                     for (int i = 0; i < temp.size(); i++) {  // Insert the reversed values into the array.
-                        usedList.set(i + x + 1, temp.get(i));
+                        list.set(i + x + 1, temp.get(i));
                     }
 
                     changed = true;
@@ -368,17 +450,13 @@ public class Project5 extends JFrame {
 
             startTime = System.currentTimeMillis();
 
-            //nearestNeighbor();
-            //randSelect();
-            randLocalIntelInsert();
-            //seqLocalIntelInsert();
-            //usedList = freeList;
-            //sequentialSmaller();
-            //randomSmaller();
-            
-            double distGreedyPath = pathLength(usedList);
+            //randLocalIntelInsert();
+            seqLocalIntelInsert();
+            groupReduce2(grouperizer());
 
             endTime = System.currentTimeMillis();
+
+            double distGreedyPath = pathLength(usedList);
 
             boolean sbChanged;
             boolean dcChanged;
@@ -388,8 +466,8 @@ public class Project5 extends JFrame {
                 dcChanged = false;
                 timesOptimization++;
 
-                sbChanged = switchBack();
-                dcChanged = decross();
+                sbChanged = switchBack(usedList);
+                dcChanged = decross(usedList);
             } while (sbChanged || dcChanged);
             double distPostOptimization = pathLength(usedList);
 
@@ -404,7 +482,7 @@ public class Project5 extends JFrame {
             graphics.setPaint(Color.BLACK);
             graphics.setFont(new Font("Monospace", Font.PLAIN, 12));
             graphics.drawString("Run Time: " + (endTime - startTime) + " ms", 0, 12);
-            graphics.drawString("Nearest neighbor dist =>" + distGreedyPath, 0, 24);
+            graphics.drawString("Insertion sort dist =>" + distGreedyPath, 0, 24);
             graphics.drawString("Dist after optimization =>" + distPostOptimization, 0, 36);
             graphics.drawString("Optimization loop iterations =>" + timesOptimization, 0, 48);
 
